@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Hello, sqlite3</title>
+  </head>
+  <body>
+    <script src="sqlite-wasm-3460100/jswasm/sqlite3-worker1-promiser.js"></script>
+    <script>
+
+      // Documentation:
+      //   - Documentation "Promiser": https://sqlite.org/wasm/doc/trunk/api-worker1.md#promiser
+      //   - [1]: Documentaiton of Promiser Methods, see "Promiser Methods" and "Worker1 Methods" in ttps://sqlite.org/wasm/doc/trunk/api-worker1.md
+      //        ("export" Method not used in bellow example.)
+      //   - Promiser uses the Worker1 API under the hood: https://sqlite.org/wasm/doc/trunk/api-worker1.md
+      //   - API breaking Changes: https://sqlite.org/wasm/doc/trunk/api-changes.md
+      // 
+      // Examples:
+      //   - Promiser + OPFS example: https://developer.chrome.com/blog/sqlite-wasm-in-the-browser-backed-by-the-origin-private-file-system
+      //   - cookbook: https://sqlite.org/wasm/doc/trunk/cookbook.md
+
+      "use strict";
+
+      /**
+       * logs the SQL error inside the error object to the console and rethrows the error object.
+       */
+      function niceErrorWrapper(promiser) {
+        return async (...args) => {
+          try {
+            return await promiser(...args);
+          } catch (err) {
+            if (!(err instanceof Error) && err.result?.message) {
+              console.error('SQLite Error:', err.result?.message);
+            }
+            throw err;
+          }
+        }
+      }
+
+      (async function() {
+
+        // init promiser
+        const promiserConfig = {
+          debug: 1 ? undefined : (...args)=>console.debug('worker debug',...args),
+          onunhandled: function(ev){
+            error("Unhandled worker message:",ev.data);
+          },
+          onerror: function(ev){
+            error("worker1 error:",ev);
+          }
+        };
+        const promiser = niceErrorWrapper(await globalThis.sqlite3Worker1Promiser.v2(promiserConfig));
+        console.log('Done initializing. Running demo...');
+        let response;
+        response = await promiser('config-get', {}); // See: [1]
+        console.log('Running SQLite3 version', response.result.version.libVersion);
+
+        // open file
+        response = await promiser('open', {  // See: [1]
+          filename: 'file:worker-promiser.sqlite3',
+          vfs: 'opfs',
+        });
+        const { dbId } = response;
+        console.log(
+          'OPFS is available, created persisted database at',
+          response.result.filename.replace(/^file:(.*?)\?vfs=opfs$/, '$1'),
+        );
+
+        // create table
+        await promiser('exec', { dbId, sql: 'CREATE TABLE IF NOT EXISTS t(a,b)' });  // See: [1]
+        console.log('Creating a table...');
+
+        // insert data
+        console.log('Insert some data using exec()...');
+        for (let i = 20; i <= 25; ++i) {
+          await promiser('exec', {  // See: [1]
+            dbId,
+            sql: 'INSERT INTO t(a,b) VALUES (?,?)',
+            bind: [i, i * 2],
+          });
+        }
+
+        // query data
+        console.log('Query data with exec()');
+        await promiser('exec', {  // See: [1]
+          dbId,
+          sql: 'SELECT a FROM t ORDER BY a LIMIT 3',
+
+          /**
+           * `callback` will be called in the same order as the rows are processed and returned by the SQL query.
+           * 
+           * `result` of the form:
+           *   {
+           *     type: typeString,
+           *     row: VALUE,
+           *     rowNumber: 1-based-#,
+           *     columnNames: anArray
+           *   }
+           * 
+           * At the end of the result set, the same event is fired with (row=undefined, rowNumber=null) to indicate that the end of the result set has been reached
+           */
+          callback: (result) => {
+            if (!result.row) {
+              return;
+            }
+            console.log(result.row);
+          },
+
+        });
+
+        // close db
+        await promiser('close', { dbId });  // See: [1]
+
+      })();
+    </script>
+  </body>
+</html>
