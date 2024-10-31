@@ -11,7 +11,7 @@
 
       // Documentation:
       //   - Documentation "Promiser": https://sqlite.org/wasm/doc/trunk/api-worker1.md#promiser
-      //   - [1]: Documentaiton of Promiser Methods, see "Promiser Methods" and "Worker1 Methods" in ttps://sqlite.org/wasm/doc/trunk/api-worker1.md
+      //   - [1]: Documentaiton of Promiser Methods, see "Promiser Methods" and "Worker1 Methods" in https://sqlite.org/wasm/doc/trunk/api-worker1.md
       //        ("export" Method not used in bellow example.)
       //   - Promiser uses the Worker1 API under the hood: https://sqlite.org/wasm/doc/trunk/api-worker1.md
       //   - API breaking Changes: https://sqlite.org/wasm/doc/trunk/api-changes.md
@@ -42,12 +42,12 @@
 
         // init promiser
         const promiserConfig = {
-          debug: 1 ? undefined : (...args)=>console.debug('worker debug',...args),
-          onunhandled: function(ev){
-            error("Unhandled worker message:",ev.data);
+          debug: (...args)=>console.debug('worker debug',...args),
+          onunhandled(ev) {
+            console.error("Unhandled worker message:",ev.data);
           },
-          onerror: function(ev){
-            error("worker1 error:",ev);
+          onerror(ev){
+            console.error("worker1 error:",ev);
           }
         };
         const promiser = niceErrorWrapper(await globalThis.sqlite3Worker1Promiser.v2(promiserConfig));
