@@ -71,21 +71,33 @@
         await promiser('exec', { dbId, sql: 'CREATE TABLE IF NOT EXISTS t(a,b)' });  // See: [1]
         console.log('Creating a table...');
 
-        // insert data
+        // insert data (+ track number of changes)
         console.log('Insert some data using exec()...');
         for (let i = 20; i <= 25; ++i) {
-          await promiser('exec', {  // See: [1]
+          const res = await promiser('exec', {  // See: [1]
             dbId,
             sql: 'INSERT INTO t(a,b) VALUES (?,?)',
+            countChanges: true,
             bind: [i, i * 2],
           });
+          console.log('Number of rows changed: ', res.result.changeCount);
         }
+
+        // Update data (+ track number of changes)
+        console.log('Update data using exec()...');
+        const res = await promiser('exec', { // See: [1]
+          dbId,
+          sql: 'UPDATE t SET b = ? WHERE a = ?',
+          countChanges: true,
+          bind: [99, 21],
+        });
+        console.log('Number of rows changed: ', res.result.changeCount);
 
         // query data
         console.log('Query data with exec()');
         await promiser('exec', {  // See: [1]
           dbId,
-          sql: 'SELECT a FROM t ORDER BY a LIMIT 3',
+          sql: 'SELECT a,b FROM t ORDER BY a LIMIT 3',
 
           /**
            * `callback` will be called in the same order as the rows are processed and returned by the SQL query.
