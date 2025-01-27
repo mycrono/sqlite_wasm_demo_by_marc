@@ -24,6 +24,7 @@ Update Sqlite version
 0) look up breaking API changes: https://sqlite.org/wasm/doc/trunk/api-changes.md
 1) Download "WebAssembly & JavaScript" from https://www.sqlite.org/download.html
 2) unpack in root of project
+4) remove all files outside /jswasm
 3) change src of import tag to new script in index.html ( ??? /jswasm/sqlite3-worker1-promiser.js)
 
 
